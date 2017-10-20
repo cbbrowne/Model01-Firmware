@@ -8,6 +8,9 @@
 #define BUILD_INFORMATION "locally built"
 #endif
 
+#define randadd 53
+#define randmul 181
+#define randmod 167
 
 #include "Kaleidoscope-MouseKeys.h"
 #include "Kaleidoscope-Macros.h"
@@ -24,12 +27,22 @@
 #include "Kaleidoscope-LED-Stalker.h"
 #include "Kaleidoscope-LED-AlphaSquare.h"
 #include "Kaleidoscope-Model01-TestMode.h"
+#include <Kaleidoscope-DualUse.h>
 
-#define MACRO_VERSION_INFO 1
-#define Macro_VersionInfo M(MACRO_VERSION_INFO)
-#define MACRO_ANY 2
-#define Macro_Any M(MACRO_ANY)
 #define NUMPAD_KEYMAP 2
+
+enum {
+  MACRO_VERSION_INFO = 1,
+  MACRO_ANY,
+  M_RANDDIGIT,
+  M_RANDLETTER
+};
+
+#define Macro_VersionInfo M(MACRO_VERSION_INFO)
+#define Macro_Any M(MACRO_ANY)
+#define m_rlet M(M_RANDLETTER)
+#define m_rdig M(M_RANDDIGIT)
+#define ALTRIGHT ALT_T(Key_RightArrow)
 
 #define GENERIC_FN2  KEYMAP_STACKED ( \
 ___,      Key_F1,           Key_F2,      Key_F3,     Key_F4,        Key_F5,           XXX,         \
@@ -41,7 +54,7 @@ Key_End,  Key_PrintScreen,  Key_Insert,  ___,        Key_mouseBtnM, Key_mouseWar
 \
 Consumer_ScanPreviousTrack, Key_F6,                 Key_F7,                   Key_F8,                  Key_F9,          Key_F10,          Key_F11, \
 Consumer_PlaySlashPause,    Consumer_ScanNextTrack, Key_LeftCurlyBracket,     Key_RightCurlyBracket,   Key_LeftBracket, Key_RightBracket, Key_F12, \
-                            Key_LeftArrow,          Key_DownArrow,            Key_UpArrow,             Key_RightArrow,  ___,              ___, \
+                            Key_LeftArrow,          Key_DownArrow,            Key_UpArrow,             Key_RightArrow,  ___,              ___,						\
 Key_PcApplication,          Key_Mute,               Consumer_VolumeDecrement, Consumer_VolumeIncrement, ___,            Key_Backslash,    Key_Pipe, \
 Key_RightShift, Key_RightAlt, Key_Enter, Key_RightControl, \
 ___ \
@@ -61,8 +74,8 @@ ___ \
     Macro_VersionInfo,  ___, Key_Keypad7, Key_Keypad8,   Key_Keypad9,        Key_KeypadSubtract, ___, \
     ___, ___, Key_Keypad4, Key_Keypad5,   Key_Keypad6,        Key_KeypadAdd,      ___, \
          ___, Key_Keypad1, Key_Keypad2,   Key_Keypad3,        Key_Equals,         Key_Quote, \
-    ___, ___, Key_Keypad0, Key_KeypadDot, Key_KeypadMultiply, Key_KeypadDivide,   Key_Enter, \
-    ___, ___, ___, ___, \
+   m_rlet , ___, Key_Keypad0, Key_KeypadDot, Key_KeypadMultiply, Key_KeypadDivide,   Key_Enter, \
+   m_rdig , ___, ___, ___, \
     Key_Keymap1_Momentary \
 )
 
@@ -96,7 +109,13 @@ static kaleidoscope::LEDSolidColor solidBlue(0, 70, 130);
 static kaleidoscope::LEDSolidColor solidIndigo(0, 0, 170);
 static kaleidoscope::LEDSolidColor solidViolet(130, 0, 120);
 
+static uint16_t random_value = 157;
+static char randch[2];  /* placeholder for random characters */
+
 const macro_t *macroAction(uint8_t macroIndex, uint8_t keyState) {
+  uint8_t clockbyte=0;
+  clockbyte = TCNT1 % 256;    /* This grabs a quasi-random byte of a timer clock to mix with random material */
+  uint8_t rval;
   if (macroIndex == TOGGLENUMLOCK && keyToggledOn(keyState)) {
     return NumLock.toggle();
   } else if (macroIndex == 1 && keyToggledOn(keyState)) {
@@ -104,11 +123,26 @@ const macro_t *macroAction(uint8_t macroIndex, uint8_t keyState) {
     Macros.type(PSTR(BUILD_INFORMATION));
   } else if (macroIndex == MACRO_ANY) {
     static Key lastKey;
+    random_value = ((random_value + randadd) * randmul) % randmod;
     if (keyToggledOn(keyState))
       lastKey.keyCode = Key_A.keyCode + (uint8_t)(millis() % 36);
 
     if (keyIsPressed(keyState))
       kaleidoscope::hid::pressKey(lastKey);
+  } else if (macroIndex == M_RANDDIGIT && keyToggledOn(keyState)) {
+    random_value = ((random_value + randadd) * randmul) % randmod;
+    rval = (random_value ^ clockbyte) % 10;
+    /* now, emit the random digit */
+    randch[0]='0'+rval;
+    randch[1]=0;
+    return Macros.type(randch);
+  } else if (macroIndex == M_RANDLETTER && keyToggledOn(keyState)) {
+    random_value = ((random_value + randadd) * randmul) % randmod;
+    rval = (random_value ^ clockbyte) % 26;
+    /* now, emit the random letter */
+    randch[0]='a'+rval;
+    randch[1]=0;
+    return Macros.type(randch);
   }
   return MACRO_NONE;
 }
@@ -128,6 +162,7 @@ void setup() {
     &NumLock,
     &Macros,
     &MouseKeys,
+    &DualUse,
     NULL);
 
   NumLock.numPadLayer = NUMPAD_KEYMAP;
