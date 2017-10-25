@@ -8,11 +8,11 @@ SKETCHBOOK_DIR ?= $(HOME)/Documents/Arduino
 PACKAGE_DIR ?= $(HOME)/Library/Arduino15
 else
 SKETCHBOOK_DIR ?= $(HOME)/Arduino
-PACKAGE_DIR ?= $(HOME)/.arduino15
+PACKAGE_DIR ?= $(HOME)/Arduino/hardware
 endif
 
 
-INSTALLED_ENV=$(shell ls -dt $(PACKAGE_DIR)/packages/keyboardio/hardware/avr/*|head -n 1)
+INSTALLED_ENV=$(shell ls -dt $(PACKAGE_DIR)/keyboardio/avr/*|head -n 1)
 
 ifneq ("$(wildcard $(INSTALLED_ENV)/boards.txt)","")
 BOARD_HARDWARE_PATH = $(INSTALLED_ENV)
